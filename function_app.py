@@ -7,7 +7,7 @@ import os
 
 app = func.FunctionApp()
 
-@app.timer_trigger(schedule="0 */2 * * * *", arg_name="wedaTimer", run_on_startup=False, use_monitor=True) 
+@app.timer_trigger(schedule=os.environ["TIMER_SCHEDULE", "0 */12 * * * *"], arg_name="wedaTimer", run_on_startup=False, use_monitor=True) 
 def wedattfunc(wedaTimer: func.TimerRequest) -> None:
     
     if wedaTimer.past_due:
