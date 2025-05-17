@@ -1,10 +1,18 @@
 {
-    "bindings": [
-      {
-        "name": "myTimer",
-        "type": "timerTrigger",
-        "direction": "in",
-        "schedule": "0 */2 * * * *"
-      }
-    ]
-  }
+  "name": "WeatherFunction",
+  "entryPoint": "WeatherFunction",
+  "scriptFile": "function_app.py",
+  "language": "python",
+  "functionDirectory": "/home/site/wwwroot",
+  "bindings": [
+    {
+      "direction": "in",
+      "type": "timerTrigger",
+      "name": "wedaTimer",
+      "schedule": "%TimerSchedule%",
+      "runonOnStartup": false,
+      "useMonitor": true
+
+    }
+  ]
+}

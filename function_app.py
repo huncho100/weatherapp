@@ -7,10 +7,10 @@ import os
 
 app = func.FunctionApp()
 
-@app.timer_trigger(schedule="0 */2 * * * *", arg_name="myTimer", run_on_startup=False, use_monitor=False) 
-def wedattfunc(myTimer: func.TimerRequest) -> None:
+@app.timer_trigger(schedule="0 */2 * * * *", arg_name="wedaTimer", run_on_startup=False, use_monitor=True) 
+def wedattfunc(wedaTimer: func.TimerRequest) -> None:
     
-    if myTimer.past_due:
+    if wedaTimer.past_due:
         logging.info('The timer is past due!')
 
     logging.info('Python timer trigger function executed.')
