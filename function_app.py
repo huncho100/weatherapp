@@ -1,57 +1,62 @@
 import azure.functions as func
 import datetime
-import json
 import logging
-import requests
 import os
+import requests
+from azure.storage.blob import BlobServiceClient
 
 app = func.FunctionApp()
 
-@app.timer_trigger(schedule="0 */2 * * * *", arg_name="wedaTimer", run_on_startup=False, use_monitor=True) 
+# Read connection info from environment
+CONNECTION_STRING = os.environ["AZURE_STORAGE_CONNECTION_STRING"]
+CONTAINER_NAME = "weather-logs"
+
+@app.timer_trigger(schedule=os.environ["TIMER_SCHEDULE"], arg_name="wedaTimer", run_on_startup=False, use_monitor=True) 
 def wedattfunc(wedaTimer: func.TimerRequest) -> None:
-    
+
     if wedaTimer.past_due:
         logging.info('The timer is past due!')
 
-    logging.info('Python timer trigger function executed.')
+    logging.info('Starting weather logging function...')
 
-    # Define the city and date format
-    city = "Casablanca"
+    city = os.getenv("CITY_NAME", "Lagos")
     today = datetime.datetime.now().strftime("%Y%m%d")
-    weather_report = f"raw_data_{today}"
+    log_filename = "rx_poc.log"
 
-    # Download the weather report
-    response = requests.get(f"http://wttr.in/{city}?format=%t")
-    with open(weather_report, 'w') as file:
-        file.write(response.text)
+    try:
+        # Fetch JSON weather data
+        response = requests.get(f"http://wttr.in/{city}?format=j1")
+        response.raise_for_status()
+        data = response.json()
 
-    # Extract temperatures
-    with open(weather_report, 'r') as file:
-        lines = file.readlines()
-    
-    logging.info(f"Lines content: {lines}")
-    logging.info(f"Number of lines: {len(lines)}")
+        # Extract current temperature (°C)
+        obs_tmp = data["current_condition"][0]["temp_C"]
 
-    obs_tmp = lines[0].strip() if len(lines) > 0 else "N/A"
+        # Extract tomorrow's temperature at around 12:00 (index 4 = ~noon)
+        fc_tmp = data["weather"][1]["hourly"][4]["tempC"]
 
-    # Extract tomorrow's temperature forecast for noon
-    fc_tmp = lines[2].strip() if len(lines) >= 3 else "N/A"
+        # Timestamp
+        now = datetime.datetime.now()
+        log_line = f"{now.year}\t{now.strftime('%b')}\t{now.day}\t{now.strftime('%H:%M:%S')}\t{obs_tmp}°C\t{fc_tmp}°C\n"
 
-    # Get the current date and time
-    now = datetime.datetime.now()
-    year = now.year
-    month = now.strftime("%b")
-    day = now.day
-    hour = now.strftime("%H:%M:%S")
+        # Connect to Blob Storage
+        blob_service_client = BlobServiceClient.from_connection_string(CONNECTION_STRING)
+        container_client = blob_service_client.get_container_client(CONTAINER_NAME)
 
-    # Create the header if the log file doesn't exist
-    log_file = "rx_poc.log"
-    if not os.path.exists(log_file):
-        with open(log_file, 'w') as file:
-            file.write("year\tmonth\tday\thour\tobs_tmp\tfc_tmp\n")
+        if not container_client.exists():
+            container_client.create_container()
 
-    # Append the current weather data to the log file
-    with open(log_file, 'a') as file:
-        file.write(f"{year}\t{month}\t{day}\t{hour}\t{obs_tmp}\t{fc_tmp}\n")
+        # Upload or update log file
+        blob_client_log = container_client.get_blob_client(log_filename)
+        try:
+            existing_log = blob_client_log.download_blob().readall().decode('utf-8')
+        except Exception:
+            existing_log = "year\tmonth\tday\thour\tobs_tmp\tfc_tmp\n"
 
-    logging.info('Weather data logged successfully.')
+        updated_log = existing_log + log_line
+        blob_client_log.upload_blob(updated_log, overwrite=True)
+
+        logging.info("Weather data logged successfully.")
+
+    except Exception as e:
+        logging.error("Unhandled error during execution")
