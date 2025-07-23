@@ -21,7 +21,7 @@ def wedattfunc(wedaTimer: func.TimerRequest) -> None:
 
     city = os.getenv("CITY_NAME", "Lagos")
     today = datetime.datetime.now().strftime("%Y%m%d")
-    log_filename = "rx_poc.log"
+    log_filename = "weather.log"
 
     try:
         # Fetch JSON weather data
@@ -30,10 +30,10 @@ def wedattfunc(wedaTimer: func.TimerRequest) -> None:
         data = response.json()
 
         # Extract current temperature (°C)
-        obs_tmp = data["current_condition"][0]["temp_C"]
+        current_temp = data["current_condition"][0]["temp_C"]
 
         # Extract tomorrow's temperature at around 12:00 (index 4 = ~noon)
-        fc_tmp = data["weather"][1]["hourly"][4]["tempC"]
+        tomorrow_tmp = data["weather"][1]["hourly"][4]["tempC"]
 
         # Timestamp
         now = datetime.datetime.now()
