@@ -1,6 +1,6 @@
 local.settings.json
 venv/
-__pycsche__/
+__pycache__/
 wedapponaz.zip
 .venv/
 
